@@ -62,6 +62,12 @@ def getPCA(matrix):
     eVal=np.diagflat(eVal)
     return eVal,eVec
 
+def cov2corr(cov):
+    std=np.sqrt(np.diag(cov)) 
+    corr=cov/np.outer(std,std) 
+    corr[corr<-1],corr[corr>1]=-1,1  
+    return corr
+
 def fitKDE(obs,bWidth=.25,kernel='gaussian',x=None):
     if len(obs.shape)==1:
         obs=obs.reshape(-1,1) 
@@ -105,3 +111,31 @@ def denoisedCorr2(eVal,eVec,nFacts,alpha=0):
     corr1=np.dot(eVecR,eValR).dot(eVecR.T) 
     corr2=corr0+alpha*corr1+(1-alpha)*np.diag(np.diag(corr1)) 
     return corr2
+
+def plotEvalDiff(eVal0, eVal1, method = 1):
+    if method == 1:
+        m = "Constant Residual"
+    else:
+        m = "Target Shrinkage"
+    ax = plt.figure().add_subplot(111)
+    plt.plot(np.diagonal(eVal0),label = 'Original eigen-function')
+    plt.plot(np.diagonal(eVal1),label = f'Denoised eigen-function ({m})',linestyle = '--')
+    ax.legend()
+    ax.set_yscale('log')
+    ax.set_xlabel('Eigenvalue number')
+    ax.set_ylabel('Eigenvalue (log-scale)')
+    plt.show()
+
+def denoiseMatrix(matrix, method = 1, alpha = 0):
+    T = float(matrix.shape[0])
+    N = matrix.shape[1]
+    q = T/N
+    eVal0, eVec0 = getPCA(matrix)
+    eMax0, var0 = findMaxEval(np.diag(eVal0), q, bWidth=.01)
+    nFacts0 = eVal0.shape[0]-np.diag(eVal0)[::-1].searchsorted(eMax0)
+    if method == 1:
+        corr1 = denoisedCorr(eVal0, eVec0, nFacts0)
+    else:
+        corr1 = denoisedCorr2(eVal0, eVec0, nFacts0, alpha)
+    eVal1, eVec1 = getPCA(corr1)
+    return eVal0, eVec0, eVal1, eVec1, corr1, var0
