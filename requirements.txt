@@ -6,3 +6,4 @@ yfinance
 requests
 bs4
 pandas_datareader
+yahoo_fin
