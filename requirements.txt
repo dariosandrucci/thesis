@@ -2,3 +2,7 @@ pandas
 numpy
 matplotlib
 scikit-learn
+yfinance
+requests
+bs4
+pandas_datareader
