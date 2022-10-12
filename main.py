@@ -1,4 +1,4 @@
-from functions import *
+from data_and_denoising import *
 
 tickers = getTickers()
 end = dt.now()
