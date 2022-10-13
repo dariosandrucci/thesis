@@ -1,4 +1,5 @@
 from data_and_denoising import *
+from clustering import *
 
 tickers = getTickers()
 end = dt.now()
@@ -13,7 +14,17 @@ corr = getCorrMatrix(data)
 #    plotEvalDiff(eVal0, eVal1, method = m)
 
 eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr, method = 1)
+print("The data was denoised successfully!")
 
-data = detoneMatrix(corr1, eVal1, eVec1, mc = 1)
+corr2 = detoneMatrix(corr1, eVal1, eVec1, mc = 1)
+print("The data was detoned successfully!")
+corr2 = pd.DataFrame(corr2)
 
-print(data)
+corr3, clstrs, silh_coef_optimal = clusterKMeansBase(corr2)
+print("The data was clustered successfully!")
+
+corr3 = pd.DataFrame(corr3)
+
+print(corr3)
+print(clstrs)
+print(silh_coef_optimal)
