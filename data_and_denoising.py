@@ -28,7 +28,7 @@ def getData(startDate, endDate, tickers, downloaded = True):
         if os.path.exists(path) == True:
             print("Data was loaded sucessfully!")
             returns = pd.read_csv(path).set_index("Date")
-            return returns
+            return returns.dropna(axis = 1, how = "any")
         else:
             print("File doesnt exist. Please download first.")
             return None
@@ -38,7 +38,7 @@ def getData(startDate, endDate, tickers, downloaded = True):
             returns = downloadReturns(startDate, endDate, tickers)
             returns.to_csv(path)
             print("Data was downloaded sucessfully!")
-            return returns
+            return returns.dropna(axis = 1, how = "any")
         else:
             print("File already exists. Please remove before downloading a new one.")
             return None
@@ -139,3 +139,13 @@ def denoiseMatrix(matrix, method = 1, alpha = 0):
         corr1 = denoisedCorr2(eVal0, eVec0, nFacts0, alpha)
     eVal1, eVec1 = getPCA(corr1)
     return eVal0, eVec0, eVal1, eVec1, corr1, var0
+
+#detoning
+
+def detoneMatrix(corr, eVal, eVec, mc = 1):
+    eVal_ = eVal[:mc, :mc]
+    eVec_ = eVec[:, :mc]
+    corr_ = np.dot(eVec_, eVal_).dot(eVec_.T)
+    corr = corr - corr_
+    corr = cov2corr(corr)
+    return corr
