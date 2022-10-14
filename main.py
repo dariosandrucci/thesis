@@ -1,5 +1,6 @@
 from data_and_denoising import *
 from clustering import *
+from portfolio_construction import *
 
 tickers = getTickers()
 end = dt.now()
@@ -20,11 +21,11 @@ corr2 = detoneMatrix(corr1, eVal1, eVec1, mc = 1)
 print("The data was detoned successfully!")
 corr2 = pd.DataFrame(corr2)
 
-corr3, clstrs, silh_coef_optimal = clusterKMeansBase(corr2)
-print("The data was clustered successfully!")
+#corr3, clstrs, silh_coef_optimal = clusterKMeansBase(corr2)
+#print("The data was clustered successfully!")
 
-corr3 = pd.DataFrame(corr3)
+#corr3 = pd.DataFrame(corr3)
 
-print(corr3)
-print(clstrs)
-print(silh_coef_optimal)
+nco = optPort_nco(corr2, maxNumClusters = 3)
+
+print(nco)
