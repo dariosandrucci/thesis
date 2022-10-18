@@ -1,3 +1,4 @@
 thesis_venv
 .DS_Store
 test.ipynb
+__pycache__

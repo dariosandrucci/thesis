@@ -2,12 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
-from sklearn.utils import check_random_state
-from scipy.linalg import block_diag
-import matplotlib.pylab as plt
-import matplotlib
 from tqdm import tqdm
-from scipy.linalg import block_diag
+from denoising_and_detoning import *
 
 def clusterKMeansBase(corr0, maxNumClusters=10, n_init=10, debug=False):
     corr0[corr0 > 1] = 1
@@ -105,7 +101,7 @@ def optPort_nco(cov, mu=None, maxNumClusters=None):
     mu_inter_cluster = (None if mu is None else w_intra_clusters.T.dot(mu))
     
     #Long/Short
-    w_inter_clusters = pd.Series(mc.optPort(cov_inter_cluster, mu_inter_cluster).flatten(), index=cov_inter_cluster.index)
+    w_inter_clusters = pd.Series(optPort(cov_inter_cluster, mu_inter_cluster).flatten(), index=cov_inter_cluster.index)
     # Long only: Optimal allocations across the reduced covariance matrix (step 3)
     #w_inter_clusters = pd.Series(allocate_cvo(cov_inter_cluster, mu_inter_cluster).flatten(), index=cov_inter_cluster.index)    
     
