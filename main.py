@@ -1,5 +1,5 @@
 from data_and_denoising import *
-from clustering_and_portfolio import *
+from algorithm import *
 from portfolio_construction import *
 
 tickers = getTickers()
