@@ -1,12 +1,15 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 class Portfolio:
 
-    def __init__(self, data, tickers, w, start, end):
+    def __init__(self, portfolio_name , data, tickers, w, start, end):
         self.w = w
         self.tickers = tickers
         self.data = data.loc[start: end]
+        self.name = portfolio_name
 
         #checks and get weights get weights in the right format
         if self.w.shape[0] != len(tickers):
@@ -20,7 +23,7 @@ class Portfolio:
         self.cum_returns = pd.Series(np.cumprod(1 + self.returns) - 1, index = self.data.index)
 
         #performance metrics
-        self.total_return = self.cum_returns.tail(1)
+        self.total_return = self.cum_returns.tail(1).values[0]
         self.ereturn = self.returns.mean()
         self.ereturn_ann = self.ereturn * 252
         self.volatility = np.std(self.returns)
@@ -35,7 +38,15 @@ class Portfolio:
         pass
 
     def performance_report(self):
-        pr = {}
-    
-    def performance_plot(self, benchmark = pd.Series()):
-        pass
+        pr = {self.name : [self.total_return, self.ereturn, self.volatility, self.ereturn_ann, self.volatility_ann, self.sharpe_ratio_ann]}
+        pr = pd.DataFrame(pr, index = ["Total Return", "Expected Return", "Daily Volatility", "Annualized Returns", "Annualized Volatility", "Sharpe Ratio"])
+        print(f"The performance metrics for the portfolio {self.name} are:\n")
+        print(pr)
+        return None
+
+    def performance_plot(self):
+        sns.lineplot(self.cum_returns)
+        plt.show()
+        return None
+        
+
