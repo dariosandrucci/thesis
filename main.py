@@ -17,7 +17,7 @@ corr0 = getCorrMatrix(train_set)
 eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
 corr2 = detoneMatrix(corr1, eVal1, eVec1)
 
-w_algo = optPort_nco(corr2, mu = 1)
+w_algo = optPort_nco(corr2)
 w_ew = [1/len(df.columns)]*len(df.columns)
 
 sp500Algo = Portfolio("S&P 500 Algo", test_set, w_algo)

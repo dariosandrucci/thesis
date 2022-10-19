@@ -34,7 +34,7 @@ def clusterKMeansBase(corr0, maxNumClusters=10, n_init=10, debug=False):
                     print("********")
     
     newIdx = np.argsort(kmeans.labels_)
-    #print(newIdx)
+    print(kmeans.labels_)
 
     corr1 = corr0.iloc[newIdx] #reorder rows
     corr1 = corr1.iloc[:, newIdx] #reorder columns
