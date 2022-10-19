@@ -133,7 +133,8 @@ class PortfolioBenchmarking:
             end = self.cum_returns.index[len(self.cum_returns.index)-1]
             spx_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
             spx_returns = spx_returns.pct_change().dropna(axis = 0)
-            spx_cum = pd.DataFrame(np.cumprod(1 + spx_returns) - 1, index = spx_returns.index,  columns = ["S&P 500 Index"])
+            spx_cum = np.cumprod(1 + spx_returns) - 1
+            spx_cum.columns = ["S&P 500 Index"]
             self.cum_returns = self.cum_returns.merge(spx_cum, how = "inner", left_index = True, right_index = True)
 
         sns.lineplot(self.cum_returns)

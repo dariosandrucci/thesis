@@ -43,7 +43,7 @@ def getData(startDate, endDate, tickers, downloaded = True):
 def getCorrMatrix(returns):
     return np.corrcoef(returns, rowvar=False)
 
-def testTrainSplit(df, validation_set = True, w_tt = [0.2, 0.8], w_tvt = [0.4,0.4,0.2]):
+def testTrainSplit(df, validation_set = True, w_tt = [0.8, 0.2], w_tvt = [0.4,0.4,0.2]):
     if validation_set == True:
         if sum(w_tvt) == 1: pass
         else: raise NameError("sum of w must be 1")
