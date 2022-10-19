@@ -8,19 +8,19 @@ import statsmodels.api as sm
 
 class Portfolio:
 
-    def __init__(self, portfolio_name , data, tickers, w, start, end):
+    def __init__(self, portfolio_name , data, w):
         self.w = w
-        self.tickers = tickers
-        self.data = data.loc[start: end]
-        self.start = start
-        self.end = end
+        self.tickers = data.columns
+        self.data = data
+        self.start = data.index[0]
+        self.end = data.index[len(data.index)-1]
         self.name = portfolio_name
 
         #checks and get weights get weights in the right format
-        if self.w.shape[0] != len(tickers):
-            self.w = self.w.reshape(-1)
+        #if self.w.shape[0] != len(self.tickers):
+        #    self.w = self.w.reshape(-1)
         
-        if len(w) != len(tickers):
+        if len(w) != len(self.tickers):
             raise NameError('weights and tickers must have the same length!')
 
         #getting the portfolio returns
@@ -106,7 +106,7 @@ class Portfolio:
 
 class PortfolioBenchmarking:
 
-    def __init__(self, portfolios:Portfolio):
+    def __init__(self, portfolios):
         
         self.portfolios = portfolios
     
@@ -119,17 +119,22 @@ class PortfolioBenchmarking:
             else:
                 raise NameError('Portfolios must have the same time range!')
 
-    def plot_performance(self):
+    def plot_performance(self, withSPY = True):
 
         #create returns dataframe
-        self.cum_returns = pd.DataFrame(self.portfolios[0].cum_returns.index)
-        cols = []
+        self.cum_returns = pd.DataFrame(index = self.portfolios[0].cum_returns.index)
 
         for port in self.portfolios:
-            self.cum_returns = self.cum_returns.merge(port.cum_returns, how = "inner", left_index = True, right_index = True)
-            cols.append(port.name)
+            ret = pd.DataFrame(port.cum_returns, index = port.cum_returns.index, columns = [port.name])
+            self.cum_returns = self.cum_returns.merge(ret, how = "inner", left_index = True, right_index = True)
 
-        self.cum_returns.columns = cols
+        if withSPY == True:
+            start = self.cum_returns.index[0]
+            end = self.cum_returns.index[len(self.cum_returns.index)-1]
+            spx_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+            spx_returns = spx_returns.pct_change().dropna(axis = 0)
+            spx_cum = pd.DataFrame(np.cumprod(1 + spx_returns) - 1, index = spx_returns.index,  columns = ["S&P 500 Index"])
+            self.cum_returns = self.cum_returns.merge(spx_cum, how = "inner", left_index = True, right_index = True)
 
         sns.lineplot(self.cum_returns)
         plt.show()

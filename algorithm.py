@@ -72,7 +72,7 @@ def allocate_cvo(cov, mu_vec=None):
     
     return w_cvo    
 
-def optPort_nco(cov, mu=None, maxNumClusters=None):
+def optPort_nco(cov, mu=None, maxNumClusters=10):
     cov = pd.DataFrame(cov)
     if mu is not None:
         mu = pd.Series(mu[:,0])
@@ -107,4 +107,5 @@ def optPort_nco(cov, mu=None, maxNumClusters=None):
     
     # Final allocations - dot-product of the intra-cluster and inter-cluster allocations (step 4)
     nco = w_intra_clusters.mul(w_inter_clusters, axis=1).sum(axis=1).values.reshape(-1,1)
+    nco = nco.reshape(-1)
     return nco
