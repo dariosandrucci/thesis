@@ -3,15 +3,24 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.neighbors import KernelDensity
 from scipy.optimize import minimize
+import warnings
+
+#warning surpressor
+
+def fxn():
+    warnings.warn("Runtime", RuntimeWarning)
 
 # Denoising
 
 def mpPDF(var,q,pts):
-    eMin,eMax=var*(1-(1./q)**.5)**2,var*(1+(1./q)**.5)**2 
-    eVal=np.linspace(eMin,eMax,pts) 
-    pdf=q/(2*np.pi*var*eVal)*((eMax-eVal)*(eVal-eMin))**.5 
-    pdf=pd.Series(pdf,index=eVal)
-    return pdf
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fxn()
+        eMin,eMax=var*(1-(1./q)**.5)**2,var*(1+(1./q)**.5)**2 
+        eVal=np.linspace(eMin,eMax,pts) 
+        pdf=q/(2*np.pi*var*eVal)*((eMax-eVal)*(eVal-eMin))**.5 
+        pdf=pd.Series(pdf,index=eVal)
+        return pdf
 
 def getPCA(matrix):
     eVal,eVec=np.linalg.eigh(matrix) 

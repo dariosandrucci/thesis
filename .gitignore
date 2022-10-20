@@ -2,3 +2,4 @@ thesis_venv
 .DS_Store
 test.ipynb
 __pycache__
+algo_tests.ipynb

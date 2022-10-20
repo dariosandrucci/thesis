@@ -9,3 +9,4 @@ pandas_datareader
 yahoo_fin
 seaborn
 statsmodels
+kneed
