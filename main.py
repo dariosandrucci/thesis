@@ -10,7 +10,7 @@ start = dt.fromisoformat('2012-10-15')
 df = getData(start, end, tickers, downloaded = True)
 df = df.dropna(axis = 0, how = "any")
 
-train_set, test_set = testTrainSplit(df, validation_set = False, w_tt = [0.80, 0.2])
+train_set, test_set = testTrainSplit(df, validation_set = False, w_tt = [0.9, 0.1])
 
 corr0 = getCorrMatrix(train_set)
 
@@ -26,5 +26,6 @@ sp500EW = Portfolio("S&P 500 EW", test_set, w_ew)
 bm = PortfolioBenchmarking([sp500Algo, sp500EW])
 
 bm.plot_performance()
+bm.
 
 #sp500Algo.performance_plot()
