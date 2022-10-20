@@ -20,12 +20,11 @@ corr2 = detoneMatrix(corr1, eVal1, eVec1)
 w_algo = optPort_nco(corr2)
 w_ew = [1/len(df.columns)]*len(df.columns)
 
-sp500Algo = Portfolio("S&P 500 Algo", test_set, w_algo)
+sp500Algo = Portfolio("S&P 500 KMeans Optimized", test_set, w_algo)
 sp500EW = Portfolio("S&P 500 EW", test_set, w_ew)
 
 bm = PortfolioBenchmarking([sp500Algo, sp500EW])
 
 bm.plot_performance()
-bm.
 
 #sp500Algo.performance_plot()
