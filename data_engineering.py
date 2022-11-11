@@ -8,8 +8,11 @@ from sklearn.model_selection import TimeSeriesSplit
 
 # Getting the data
 
-def getTickers():
-    return si.tickers_sp500()
+def getTickers(market = "SP500"):
+    if market == "SP500":
+        return si.tickers_sp500()
+    else:
+        pass
 
 def downloadReturns(startDate, endDate, tickers):
     prices = pdr.get_data_yahoo(tickers, startDate, endDate)["Close"]
