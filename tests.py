@@ -14,8 +14,6 @@ train_set, test_set = testTrainSplit(df, validation_set = False, w_tt = [0.9, 0.
 
 corr0 = getCorrMatrix(train_set)
 
-eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
-corr2 = detoneMatrix(corr1, eVal1, eVec1)
+w = optPort_nco(train_set, corr0, 3, 0.5, 150, 3)
+print(w)
 
-w_algo = optPort_nco(df, corr2)
-print(w_algo)
