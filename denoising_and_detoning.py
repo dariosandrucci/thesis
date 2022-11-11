@@ -6,12 +6,10 @@ from scipy.optimize import minimize
 import warnings
 
 #warning surpressor
-
 def fxn():
     warnings.warn("Runtime", RuntimeWarning)
 
 # Denoising
-
 def mpPDF(var,q,pts):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

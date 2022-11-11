@@ -7,20 +7,24 @@ from denoising_and_detoning import *
 from kneed import KneeLocator
 from sklearn.metrics import davies_bouldin_score
 
-def sse(matrix, maxClusters = 10):
-     sse = []
-     for k in range(1, maxClusters + 1):
-          kmeans = KMeans(n_clusters=k,  init= 'k-means++', n_init= 10, max_iter=300)
-          kmeans.fit(matrix)
-          sse.append(kmeans.inertia_)
+def sse(matrix, maxClusters = 10, graph = True):
+    sse = []
+    for k in range(1, maxClusters + 1):
+        kmeans = KMeans(n_clusters=k,  init= 'k-means++', n_init= 10, max_iter=300)
+        kmeans.fit(matrix)
+        sse.append(kmeans.inertia_)
 
-     y = sse
-     x = range(1, len(y)+1)
+    y = sse
+    x = range(1, len(y)+1)
 
-     kn = KneeLocator(x, y, curve='convex', direction='decreasing')
-     return kn.knee
+    kn = KneeLocator(x, y, curve='convex', direction='decreasing')
+    
+    if graph:
+        kn.plot_knee()
 
-def sil_score(matrix, maxClusters = 10):
+    return kn.knee
+
+def sil_score(matrix, maxClusters = 10, graph = True):
     # A list holds the silhouette coefficients for each k
     silhouette_coefficients = []
 
@@ -32,9 +36,16 @@ def sil_score(matrix, maxClusters = 10):
         silhouette_coefficients.append(score)
 
     nr_clusters = silhouette_coefficients.index(max(silhouette_coefficients)) + 2
+
+    if graph:
+        plt.plot(range(2, maxClusters + 1), silhouette_coefficients)
+        plt.xticks(range(2, maxClusters + 1))
+        plt.xlabel("Number of Clusters")
+        plt.ylabel("Silhouette Coefficient")
+
     return nr_clusters
 
-def db_score(matrix, maxClusters = 10):
+def db_score(matrix, maxClusters = 10, graph = True):
     DB_score = []
 
     for k in range(2, maxClusters + 1):
@@ -45,16 +56,22 @@ def db_score(matrix, maxClusters = 10):
     
     clusters = DB_score.index(min(DB_score)) + 2
 
+    if graph:
+        plt.plot(range(2, maxClusters + 1), DB_score)
+        plt.xticks(range(2, maxClusters + 1))
+        plt.xlabel("Number of Clusters")
+        plt.ylabel("Davies Bouldin Score")
+
     return clusters
 
 def clusterKMeansBase(matrix, maxNumClusters=10, n_init=10):
 
     #data prep
-    #matrix = pd.DataFrame(matrix)
-    dist_matrix = ((1-matrix.fillna(0))/2.)**.5
-    matrix[matrix > 1] = 1
-    silh_coef_optimal = pd.Series(dtype='float64') #observations matrixs
-    kmeans, stat = None, None
+    dist_matrix = pd.DataFrame(matrix)
+    #dist_matrix = ((1-matrix.fillna(0))/2.)**.5
+    #matrix[matrix > 1] = 1
+    #silh_coef_optimal = pd.Series(dtype='float64') #observations matrixs
+    #kmeans, stat = None, None
     
     #find range of possible clusters with SSE, Silhouette, DBScore
     nr_clusters = []
@@ -124,7 +141,7 @@ def optPort_nco(cov, mu=None, maxNumClusters=10):
     
     corr1 = cov2corr(cov)
     
-    # Optimal partition of clusters (step 1)
+    #Optimal partition of clusters (step 1)
     corr1, clstrs, _ = clusterKMeansBase(corr1, maxNumClusters, n_init=10)
 
     #wIntra = pd.DataFrame(0, index=cov.index, columns=clstrs.keys())
