@@ -10,3 +10,4 @@ yahoo_fin
 seaborn
 statsmodels
 kneed
+PyPortfolioOpt
