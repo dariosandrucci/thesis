@@ -5,15 +5,24 @@ from portfolio_and_backtesting import *
 
 tickers = getTickers()
 end = dt.now()
-start = dt.fromisoformat('2012-10-15')
+start = dt.fromisoformat('2020-10-15')
 
-df = getData(start, end, tickers, downloaded = True)
+df = getData(start, end, tickers, downloaded = True, format = "prices")
 df = df.dropna(axis = 0, how = "any")
 
 train_set, test_set = testTrainSplit(df, validation_set = False, w_tt = [0.9, 0.1])
-
-corr0 = getCorrMatrix(train_set)
-
-w = optPort_nco(train_set, corr0, 3, 0.5, 150, 3)
+print(train_set)
+x = pdr.get_data_yahoo(["AAPL","A"])["Close"]
+w = optPortMVO(df)
 print(w)
+
+#corr0 = getCorrMatrix(train_set)
+
+#eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
+#corr2 = detoneMatrix(corr1, eVal1, eVec1)
+
+#min_matrix = np.array(pairwise_distances(corr2, metric = "minkowski"))
+
+#w = optPortMVO(train_set)
+#print(w)
 

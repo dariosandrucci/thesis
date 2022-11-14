@@ -6,6 +6,12 @@ from tqdm import tqdm
 from denoising_and_detoning import *
 from kneed import KneeLocator
 from sklearn.metrics import davies_bouldin_score
+from sklearn.metrics import pairwise_distances
+from pypfopt.efficient_frontier import EfficientFrontier
+from pypfopt import risk_models
+from pypfopt import expected_returns
+from scipy.optimize import minimize
+
 
 def sse(matrix, maxClusters = 10, graph = True):
     sse = []
@@ -130,23 +136,40 @@ def optPortOmega(df, threshold, iterations = 25000):
     
     return weights 
 
+def optPortMVO(returns):
+    
+    #calculate E(r) and covariances
+    mu = expected_returns.mean_historical_return(returns)
+    S = risk_models.sample_cov(returns)
+    
+    #optimize for max sharpe
+    ef = EfficientFrontier(mu, S) # create efficient frontier
+    w = ef.max_sharpe()
+    
+    #cleaned_weights = ef.clean_weights()
+    output = []
+    for i, w in w.items():
+        output.append(w)
+        
+    return np.array(output)
+
 def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10):
 
     print("\nNested Clustering Algorithm 2.1.2\n")
     print("Processing input data....")
     
     #data perparation
-    cov = pd.DataFrame(cov)
-    corr = cov2corr(cov)
+    corr = pd.DataFrame(cov)
+    #corr = cov2corr(cov)
     df_ = df
-    df_.columns = list(range(len(cov.columns)))
+    df_.columns = list(range(len(corr.columns)))
 
     #clustering
     print("Clustering algorithm in progress...")
     corr1, clstrs, _ = clusterKMeansBase(corr, numClusters, n_init=n_init)
 
     #w intra cluster
-    w_intra_clusters = pd.DataFrame(0, index=cov.index, columns=clstrs.keys())
+    w_intra_clusters = pd.DataFrame(0, index=corr.index, columns=clstrs.keys())
 
     for i in clstrs:
         print(f"Calculating inter cluster weights for cluster {i+1} of {numClusters}...")
@@ -167,3 +190,108 @@ def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_ini
     print("Nested clustering algorithm completed sucessful!")
 
     return nco
+
+TOLERANCE = 1e-11
+
+def _allocation_risk(weights, covariances):
+
+    # We calculate the risk of the weights distribution
+    portfolio_risk = np.sqrt((weights * covariances * weights.T))[0, 0]
+
+    # It returns the risk of the weights distribution
+    return portfolio_risk
+
+
+def _assets_risk_contribution_to_allocation_risk(weights, covariances):
+
+    # We calculate the risk of the weights distribution
+    portfolio_risk = _allocation_risk(weights, covariances)
+
+    # We calculate the contribution of each asset to the risk of the weights
+    # distribution
+    assets_risk_contribution = np.multiply(weights.T, covariances * weights.T) \
+        / portfolio_risk
+
+    # It returns the contribution of each asset to the risk of the weights
+    # distribution
+    return assets_risk_contribution
+
+
+def _risk_budget_objective_error(weights, args):
+
+    # The covariance matrix occupies the first position in the variable
+    covariances = args[0]
+
+    # The desired contribution of each asset to the portfolio risk occupies the
+    # second position
+    assets_risk_budget = args[1]
+
+    # We convert the weights to a matrix
+    weights = np.matrix(weights)
+
+    # We calculate the risk of the weights distribution
+    portfolio_risk = _allocation_risk(weights, covariances)
+
+    # We calculate the contribution of each asset to the risk of the weights
+    # distribution
+    assets_risk_contribution = \
+        _assets_risk_contribution_to_allocation_risk(weights, covariances)
+
+    # We calculate the desired contribution of each asset to the risk of the
+    # weights distribution
+    assets_risk_target = \
+        np.asmatrix(np.multiply(portfolio_risk, assets_risk_budget))
+
+    # Error between the desired contribution and the calculated contribution of
+    # each asset
+    error = \
+        sum(np.square(assets_risk_contribution - assets_risk_target.T))[0, 0]
+
+    # It returns the calculated error
+    return error
+
+
+def _get_risk_parity_weights(covariances, assets_risk_budget, initial_weights):
+
+    # Restrictions to consider in the optimisation: only long positions whose
+    # sum equals 100%
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0},
+                   {'type': 'ineq', 'fun': lambda x: x})
+
+    # Optimisation process in scipy
+    optimize_result = minimize(fun=_risk_budget_objective_error,
+                               x0=initial_weights,
+                               args=[covariances, assets_risk_budget],
+                               method='SLSQP',
+                               constraints=constraints,
+                               tol=TOLERANCE,
+                               options={'disp': False})
+
+    # Recover the weights from the optimised object
+    weights = optimize_result.x
+
+    # It returns the optimised weights
+    return weights
+
+def optPortRPP(returns):
+
+    # We calculate the covariance matrix
+    covariances = returns.cov().values
+
+    # The desired contribution of each asset to the portfolio risk: we want all
+    # asset to contribute equally
+    assets_risk_budget = [1 / returns.shape[1]] * returns.shape[1]
+
+    # Initial weights: equally weighted
+    init_weights = [1 / returns.shape[1]] * returns.shape[1]
+
+    # Optimisation process of weights
+    weights = \
+        _get_risk_parity_weights(covariances, assets_risk_budget, init_weights)
+
+    # Convert the weights to a pandas Series
+    #weights = pd.Series(weights, index=returns.columns, name='weight')
+    weights = np.array(weights)
+
+    # It returns the optimised weights
+    return weights
