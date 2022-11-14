@@ -136,22 +136,45 @@ def optPortOmega(df, threshold, iterations = 25000):
     
     return weights 
 
-def optPortMVO(returns):
+def optPortMVO(returns, nrIter = 100000, res = 4, rf = 0):
+
+    stocks = returns.columns
+    resolution = res
+    lower_bound = 10**(-resolution)
+    upper_bound = 0.4
+    simulated_weights = []
+    simulated_portfolios = np.zeros((3, nrIter))
+    risk_free_rate = rf
     
-    #calculate E(r) and covariances
-    mu = expected_returns.mean_historical_return(returns)
-    S = risk_models.sample_cov(returns)
+    returns_mean = returns.mean()
+    returns_covariance_matrix = returns.cov()
     
-    #optimize for max sharpe
-    ef = EfficientFrontier(mu, S) # create efficient frontier
-    w = ef.max_sharpe()
-    
-    #cleaned_weights = ef.clean_weights()
-    output = []
-    for i, w in w.items():
-        output.append(w)
+    for index in tqdm(range(nrIter)):
+
+    # Randomly creating the array of weight and then normalizing such that the sum equals 1
+    #
+        #select random weights for portfolio holdings
+        weights_ = np.array(np.random.random(len(stocks)))
+        #rebalance weights to sum to 1
+        weights_ /= np.sum(weights_)
+
+        simulated_weights.append(weights_)
         
-    return np.array(output)
+        # Computing the return and volatility of the portfolio with those weights
+        portfolio_return = np.sum(returns_mean.values * weights_ * 252)
+        portfolio_volatility = np.sqrt(np.dot(weights_.T, np.dot(returns_covariance_matrix.values, weights_))* 252**2)
+
+        # Store results of the simulation
+        simulated_portfolios[0, index] = portfolio_return 
+        simulated_portfolios[1, index] = portfolio_volatility
+        simulated_portfolios[2, index] = (portfolio_return - risk_free_rate) / portfolio_volatility
+
+    simulated_portfolios_df = pd.DataFrame(simulated_portfolios.T,columns=['retrn','stdv','sharpe'])
+    highest_sharpe_position = simulated_portfolios_df['sharpe'].idxmax()
+    highest_sharpe = simulated_portfolios_df.iloc[highest_sharpe_position]
+    highest_sharpe_weights = simulated_weights[highest_sharpe_position]
+
+    return highest_sharpe_weights
 
 def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10):
 

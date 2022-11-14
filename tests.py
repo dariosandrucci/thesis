@@ -7,14 +7,14 @@ tickers = getTickers()
 end = dt.now()
 start = dt.fromisoformat('2020-10-15')
 
-df = getData(start, end, tickers, downloaded = True, format = "prices")
+df = getData(start, end, tickers, downloaded = True, format = "returns")
 df = df.dropna(axis = 0, how = "any")
 
 train_set, test_set = testTrainSplit(df, validation_set = False, w_tt = [0.9, 0.1])
-print(train_set)
 x = pdr.get_data_yahoo(["AAPL","A"])["Close"]
-w = optPortMVO(df)
+w = optPortMVO(train_set, nrIter = 50000)
 print(w)
+print(sum(w))
 
 #corr0 = getCorrMatrix(train_set)
 

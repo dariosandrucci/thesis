@@ -147,3 +147,15 @@ class PortfolioBenchmarking:
 
     def report_alpha(self):
         pass
+
+#to adapt
+def max_drawdown(portfolio_data_frame, weights, time_period):
+    simulated_portfolio = weights[0]*portfolio_data_frame.ix[:,0]
+    for i in range(1, len(portfolio_data_frame.columns)):
+        simulated_portfolio += weights[i]*portfolio_data_frame.ix[:,i]
+    max_drawdown_value = float('-inf')
+    for i in range(int(len(simulated_portfolio)/time_period)-1):
+        biggest_variation = max(simulated_portfolio[i*time_period:(i+1)*time_period])/min(simulated_portfolio[i*time_period:(i+1)*time_period])
+        if(biggest_variation > max_drawdown_value):
+            max_drawdown_value = biggest_variation
+    return max_drawdown_value
