@@ -17,5 +17,9 @@ corr0 = getCorrMatrix(train_set)
 eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
 corr2 = detoneMatrix(corr1, eVal1, eVec1)
 
-w_algo = optPort_nco(df, corr2)
-print(w_algo)
+cov0 = corr2cov(corr2)
+w_cov_only = optPortMVO(train_set)
+print(w_cov_only)
+
+#w_algo = optPort_nco(df, corr2)
+#print(w_algo)

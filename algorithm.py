@@ -4,6 +4,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples, silhouette_score
 from tqdm import tqdm
 from denoising_and_detoning import *
+from data_engineering import *
 from kneed import KneeLocator
 from sklearn.metrics import davies_bouldin_score
 from sklearn.metrics import pairwise_distances
@@ -11,6 +12,7 @@ from pypfopt.efficient_frontier import EfficientFrontier
 from pypfopt import risk_models
 from pypfopt import expected_returns
 from scipy.optimize import minimize
+from dateutil.relativedelta import relativedelta
 
 
 def sse(matrix, maxClusters = 10, graph = True):
@@ -80,7 +82,7 @@ def clusterKMeansBase(matrix, nrClusters=10, n_init=10):
     for init in range(0, n_init):
     #The [outer] loop repeats the first loop multiple times, thereby obtaining different initializations. Ref: de Prado and Lewis (2018)
     #DETECTION OF FALSE INVESTMENT STRATEGIES USING UNSUPERVISED LEARNING METHODS
-        for num_clusters in tqdm(clst):
+        for num_clusters in clst:
             kmeans_ = KMeans(n_clusters=num_clusters, init = "k-means++", n_init=10, max_iter=300)
             kmeans_ = kmeans_.fit(matrix)
             silh_coef = silhouette_samples(matrix, kmeans_.labels_)
@@ -111,17 +113,20 @@ def omega(returns, threshold):
     omega = dfPositiveSum/(-dfNegativeSum)
     return omega
 
-def optPortOmega(df, threshold, iterations = 25000):
+def optPortOmega(df, threshold, iterations = 25000, constraint = "Long-Only"):
 
     df_ = np.array(df)
     weights = np.array([])
     omega_score = -9999.0
     dailyThreshold = (threshold + 1) ** np.sqrt(1/252) - 1
 
-    for i in tqdm(range(iterations)):
+    for i in range(iterations):
 
         #select random weights for portfolio holdings
-        weights_ = np.array(np.random.random(len(df_[0])))
+        if constraint == "Long-Only":
+            weights_ = np.array(np.random.random(len(df_[0])))
+        else:
+            weights_ = np.array(np.random.uniform(high = 10.0, low = -1.0, size = len(df_[0])))
         #rebalance weights to sum to 1
         weights_ /= np.sum(weights_)
 
@@ -136,25 +141,30 @@ def optPortOmega(df, threshold, iterations = 25000):
     
     return weights 
 
-def optPortMVO(returns, nrIter = 100000, res = 4, rf = 0):
+def optPortMVO(returns, cov = pd.DataFrame(), nrIter = 100000, res = 4, rf = 0, cov_in = False, constraint = "Long-Only"):
 
+    returns.columns = list(range(len(returns.columns)))
     stocks = returns.columns
     resolution = res
-    lower_bound = 10**(-resolution)
-    upper_bound = 0.4
     simulated_weights = []
     simulated_portfolios = np.zeros((3, nrIter))
     risk_free_rate = rf
     
     returns_mean = returns.mean()
-    returns_covariance_matrix = returns.cov()
-    
-    for index in tqdm(range(nrIter)):
+    if cov_in == False:
+        returns_covariance_matrix = returns.cov()
+    else:
+        returns_covariance_matrix = pd.DataFrame(cov, columns = returns.columns, index = returns.columns)
+
+    for index in range(nrIter):
 
     # Randomly creating the array of weight and then normalizing such that the sum equals 1
     #
         #select random weights for portfolio holdings
-        weights_ = np.array(np.random.random(len(stocks)))
+        if constraint == "Long-Only":
+            weights_ = np.array(np.random.random(len(stocks)))
+        else:
+            weights_ = np.array(np.random.uniform(high = 10.0, low = -1.0, size = len(stocks)))
         #rebalance weights to sum to 1
         weights_ /= np.sum(weights_)
 
@@ -171,16 +181,14 @@ def optPortMVO(returns, nrIter = 100000, res = 4, rf = 0):
 
     simulated_portfolios_df = pd.DataFrame(simulated_portfolios.T,columns=['retrn','stdv','sharpe'])
     highest_sharpe_position = simulated_portfolios_df['sharpe'].idxmax()
-    highest_sharpe = simulated_portfolios_df.iloc[highest_sharpe_position]
+    #highest_sharpe = simulated_portfolios_df.iloc[highest_sharpe_position]
     highest_sharpe_weights = simulated_weights[highest_sharpe_position]
 
     return highest_sharpe_weights
 
-def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10):
+def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10, score = "omega", constraint = "Long-Only"):
 
-    print("\nNested Clustering Algorithm 2.1.2\n")
-    print("Processing input data....")
-    
+    print("Nested clustering algorithm calculating ...")
     #data perparation
     corr = pd.DataFrame(cov)
     #corr = cov2corr(cov)
@@ -188,29 +196,42 @@ def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_ini
     df_.columns = list(range(len(corr.columns)))
 
     #clustering
-    print("Clustering algorithm in progress...")
     corr1, clstrs, _ = clusterKMeansBase(corr, numClusters, n_init=n_init)
 
-    #w intra cluster
-    w_intra_clusters = pd.DataFrame(0, index=corr.index, columns=clstrs.keys())
+    if score == "omega":
+        #w intra cluster
+        w_intra_clusters = pd.DataFrame(0, index=corr.index, columns=clstrs.keys())
 
-    for i in clstrs:
-        print(f"Calculating inter cluster weights for cluster {i+1} of {numClusters}...")
-        w_intra_clusters.loc[clstrs[i],i] = optPortOmega(df_.loc[:,clstrs[i]], threshold, nrIter).flatten()      
+        for i in clstrs:
+            w_intra_clusters.loc[clstrs[i],i] = optPortOmega(df_.loc[:,clstrs[i]], threshold, nrIter, constraint = constraint).flatten()      
 
-    #w inter cluster
-    print("Calculating inter cluster weights...")
-    intra_returns = pd.DataFrame(0, index = df.index, columns = list(range(len(clstrs))))
+        #w inter cluster
+        intra_returns = pd.DataFrame(0, index = df.index, columns = list(range(len(clstrs))))
 
-    for i in range(len(clstrs)):
-        intra_returns.loc[:,i] = pd.Series(df_.apply(lambda row: np.average(row, weights = w_intra_clusters.loc[:,i]), axis=1))
+        for i in range(len(clstrs)):
+            intra_returns.loc[:,i] = pd.Series(df_.apply(lambda row: np.average(row, weights = w_intra_clusters.loc[:,i]), axis=1))
 
-    w_inter_clusters = pd.Series(optPortOmega(intra_returns, threshold, nrIter).flatten(), index=intra_returns.columns)
+        w_inter_clusters = pd.Series(optPortOmega(intra_returns, threshold, nrIter, constraint = constraint).flatten(), index=intra_returns.columns)
+
+    elif score == "sharpe":
+                #w intra cluster
+        w_intra_clusters = pd.DataFrame(0, index=corr.index, columns=clstrs.keys())
+
+        for i in clstrs:
+            w_intra_clusters.loc[clstrs[i],i] = optPortMVO(df_.loc[:,clstrs[i]], nrIter = nrIter, cov_in = False, constraint = constraint).flatten()      
+
+        #w inter cluster
+        intra_returns = pd.DataFrame(0, index = df.index, columns = list(range(len(clstrs))))
+
+        for i in range(len(clstrs)):
+            intra_returns.loc[:,i] = pd.Series(df_.apply(lambda row: np.average(row, weights = w_intra_clusters.loc[:,i]), axis=1))
+
+        w_inter_clusters = pd.Series(optPortMVO(intra_returns, cov_in = False, constraint = constraint).flatten(), index=intra_returns.columns)
 
     nco = w_intra_clusters.mul(w_inter_clusters, axis=1).sum(axis=1).values.reshape(-1,1)
     nco = nco.reshape(-1)
 
-    print("Nested clustering algorithm completed sucessful!")
+    print("Calculations completed sucessful!")
 
     return nco
 
@@ -318,3 +339,52 @@ def optPortRPP(returns):
 
     # It returns the optimised weights
     return weights
+
+def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly"):
+
+    #find initial dates and creates variables
+    returns = pd.Series(0, index = df.index)
+    curren_start = investment_start
+    investing = True
+    print("Calculations for rebalanced portfolio in progress...")
+
+    #loop over test set and get returns
+    while investing == True:
+
+        #set dates
+        train_start = curren_start - relativedelta(years = 1)
+        train_end = curren_start
+        test_end = curren_start + relativedelta(months = 1)
+
+        #devide data
+        train_set = df.loc[train_start : train_end]
+        test_set = df.loc[curren_start : test_end]
+
+        #test if test set is not empty
+        if len(test_set) != 0:
+            pass
+        else:
+            investing = False
+            break
+
+        #calculate input
+        corr0 = getCorrMatrix(train_set)
+        eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
+        corr2 = detoneMatrix(corr1, eVal1, eVec1)
+        min_matrix = np.array(pairwise_distances(corr2, metric = "minkowski"))
+
+        #call algorithm
+        w = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only")
+
+        #invest
+        returns_ = pd.Series(test_set.apply(lambda row: np.average(row, weights = w), axis=1), index = test_set.index)
+
+        #add to data DataFrame
+        returns.loc[test_set.index] = returns_
+
+        #reset current date
+        curren_start = curren_start + relativedelta(months = 1)
+
+    returns = returns[returns != 0.0]
+    print("Calculations completed sucessfuly!")
+    return returns

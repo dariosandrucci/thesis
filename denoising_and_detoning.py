@@ -33,6 +33,11 @@ def cov2corr(cov):
     corr[corr<-1],corr[corr>1]=-1,1  
     return corr
 
+def corr2cov(corr):
+    std = np.random.uniform(.05,.2,corr.shape[0])
+    cov = corr*np.outer(std, std)
+    return cov
+
 def fitKDE(obs,bWidth=.25,kernel='gaussian',x=None):
     if len(obs.shape)==1:
         obs=obs.reshape(-1,1) 
