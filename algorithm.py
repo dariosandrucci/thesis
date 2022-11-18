@@ -14,6 +14,7 @@ from pypfopt import expected_returns
 from scipy.optimize import minimize
 from dateutil.relativedelta import relativedelta
 
+NasdaqAPIKEY = "LyHsXQy2qdCMyB3bzQ-F"
 
 def sse(matrix, maxClusters = 10, graph = True):
     sse = []
@@ -188,7 +189,7 @@ def optPortMVO(returns, cov = pd.DataFrame(), nrIter = 100000, res = 4, rf = 0, 
 
 def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10, score = "omega", constraint = "Long-Only"):
 
-    print("Nested clustering algorithm calculating ...")
+    #print("Nested clustering algorithm calculating ...")
     #data perparation
     corr = pd.DataFrame(cov)
     #corr = cov2corr(cov)
@@ -231,7 +232,7 @@ def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_ini
     nco = w_intra_clusters.mul(w_inter_clusters, axis=1).sum(axis=1).values.reshape(-1,1)
     nco = nco.reshape(-1)
 
-    print("Calculations completed sucessful!")
+    #print("Calculations completed sucessful!")
 
     return nco
 
@@ -346,7 +347,7 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
     returns = pd.Series(0, index = df.index)
     curren_start = investment_start
     investing = True
-    print("Calculations for rebalanced portfolio in progress...")
+    #print("Calculations for rebalanced portfolio in progress...")
 
     #loop over test set and get returns
     while investing == True:
@@ -386,5 +387,5 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
         curren_start = curren_start + relativedelta(months = 1)
 
     returns = returns[returns != 0.0]
-    print("Calculations completed sucessfuly!")
+    #print("Calculations completed sucessfuly!")
     return returns

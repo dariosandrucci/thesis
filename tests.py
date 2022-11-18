@@ -2,6 +2,7 @@ from data_engineering import *
 from algorithm import *
 from denoising_and_detoning import *
 from portfolio_and_backtesting import *
+import nasdaqdatalink
 
 tickers = getTickers()
 end = dt.now()

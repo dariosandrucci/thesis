@@ -11,4 +11,4 @@ seaborn
 statsmodels
 kneed
 PyPortfolioOpt
-rportfolios
+nasdaq-data-link
