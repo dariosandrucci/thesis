@@ -6,12 +6,10 @@ from scipy.optimize import minimize
 import warnings
 
 #warning surpressor
-
 def fxn():
     warnings.warn("Runtime", RuntimeWarning)
 
 # Denoising
-
 def mpPDF(var,q,pts):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -34,6 +32,11 @@ def cov2corr(cov):
     corr=cov/np.outer(std,std) 
     corr[corr<-1],corr[corr>1]=-1,1  
     return corr
+
+def corr2cov(corr):
+    std = np.random.uniform(.05,.2,corr.shape[0])
+    cov = corr*np.outer(std, std)
+    return cov
 
 def fitKDE(obs,bWidth=.25,kernel='gaussian',x=None):
     if len(obs.shape)==1:

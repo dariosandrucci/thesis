@@ -17,14 +17,9 @@ corr0 = getCorrMatrix(train_set)
 eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
 corr2 = detoneMatrix(corr1, eVal1, eVec1)
 
-w_algo = optPort_nco(corr2)
-w_ew = [1/len(df.columns)]*len(df.columns)
+cov0 = corr2cov(corr2)
+w_cov_only = optPortMVO(train_set)
+print(w_cov_only)
 
-sp500Algo = Portfolio("S&P 500 KMeans Optimized", test_set, w_algo)
-sp500EW = Portfolio("S&P 500 EW", test_set, w_ew)
-
-bm = PortfolioBenchmarking([sp500Algo, sp500EW])
-
-bm.plot_performance()
-
-#sp500Algo.performance_plot()
+#w_algo = optPort_nco(df, corr2)
+#print(w_algo)

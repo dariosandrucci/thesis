@@ -102,7 +102,93 @@ class Portfolio:
         sns.lineplot(self.cum_returns)
         plt.show()
         return None
+
+class Portfolio_Ret:
+
+    def __init__(self, portfolio_name , returns):
+        self.start = returns.index[0]
+        self.end = returns.index[len(returns.index)-1]
+        self.name = portfolio_name
         
+        #getting the portfolio returns
+        self.returns = returns
+        self.cum_returns = pd.Series(np.cumprod(1 + self.returns) - 1, index = self.returns.index)
+
+        #performance metrics
+        self.total_return = self.cum_returns.tail(1).values[0]
+        self.ereturn = self.returns.mean()
+        self.ereturn_ann = self.ereturn * 252
+        self.volatility = np.std(self.returns)
+        self.volatility_ann = self.volatility * np.sqrt(252)
+        self.sharpe_ratio = self.ereturn / self.volatility
+        self.sharpe_ratio_ann = self.ereturn_ann / self.volatility_ann
+
+    def drawdown_report(self):
+        pass
+    
+    def alpha_report(self, return_values = True):
+        print("Getting benchmark data....")
+        
+        mkt_returns = pdr.get_data_yahoo(["SPY"], self.start, self.end)["Close"]
+        mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
+        X = pd.DataFrame(self.returns[1:], columns = [self.name])
+        y = mkt_returns
+
+        if y.index[0] == X.index[0]:
+            pass
+        else:
+            print("Data head has to be trimmed....")
+            if y.index[0] > X.index[0]:
+                X = X.iloc[1:]
+            elif y.index[0] < X.index[0]:
+                y = y.iloc[1:]
+        
+        if y.index[len(y)-1] == X.index[len(X)-1]:
+            pass
+        else:
+            print("Data tail has to be trimmed....")
+            if y.index[len(y)-1] > X.index[len(X)-1]:
+                y = y.iloc[:len(y)-2]
+            if y.index[len(y)-1] < X.index[len(X)-1]:
+                X = X.iloc[:len(X)-2]
+
+        print("Data was imported sucessfully!\n")
+
+        X2 = sm.add_constant(X)
+        est = sm.OLS(y, X2)
+        est2 = est.fit()
+        alpha = est2.params[0]
+        beta = est2.params[1]
+        p_alpha = est2.pvalues[0]
+        p_beta = est2.pvalues[1]
+        r2 = est2.rsquared
+
+        print("The model was calculated as follows:\n")
+        print(f"Alpha: {alpha}")
+        print(f"Beta: {beta}")
+        print(f"P-Value Alpha: {p_alpha}")
+        print(f"P-Value Beta: {p_beta}")
+        print(f"Model R2: {r2}")
+
+        if return_values == True:
+            return alpha, beta, p_alpha, p_beta, r2
+        else:
+            return None
+
+    def performance_report(self, return_values = True):
+        pr = {self.name : [self.total_return, self.ereturn, self.volatility, self.ereturn_ann, self.volatility_ann, self.sharpe_ratio_ann]}
+        pr = pd.DataFrame(pr, index = ["Total Return", "Expected Return", "Daily Volatility", "Annualized Returns", "Annualized Volatility", "Sharpe Ratio"])
+        print(f"The performance metrics for the portfolio {self.name} are:\n")
+        print(pr)
+        if return_values == True:
+            return pr
+        else:
+            return None
+
+    def performance_plot(self):
+        sns.lineplot(self.cum_returns)
+        plt.show()
+        return None
 
 class PortfolioBenchmarking:
 
@@ -147,3 +233,39 @@ class PortfolioBenchmarking:
 
     def report_alpha(self):
         pass
+
+#to adapt
+def max_drawdown(portfolio_data_frame, weights, time_period):
+    simulated_portfolio = weights[0]*portfolio_data_frame.ix[:,0]
+    for i in range(1, len(portfolio_data_frame.columns)):
+        simulated_portfolio += weights[i]*portfolio_data_frame.ix[:,i]
+    max_drawdown_value = float('-inf')
+    for i in range(int(len(simulated_portfolio)/time_period)-1):
+        biggest_variation = max(simulated_portfolio[i*time_period:(i+1)*time_period])/min(simulated_portfolio[i*time_period:(i+1)*time_period])
+        if(biggest_variation > max_drawdown_value):
+            max_drawdown_value = biggest_variation
+    return max_drawdown_value
+
+def persistance_counter(clusters):
+    nr_clusters = len(clusters[0])
+    output = {}
+    base_clusters = {}
+
+    for i in range(nr_clusters):
+        output[i] = []
+        base_clusters[i] = np.array(clusters[0][i])
+
+    for rb in clusters:
+        cl = []
+        for nr, cluster in rb.items():
+            cl.append(cluster)
+        for nr, cluster in rb.items():
+            l = 0
+            for c in cl:
+                int = len(np.intersect1d(base_clusters[nr],np.array(c)))
+                if int > l:
+                    l = int
+                else:
+                    pass
+            output[nr].append(l)
+    return output
