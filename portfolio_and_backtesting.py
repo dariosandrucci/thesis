@@ -245,3 +245,27 @@ def max_drawdown(portfolio_data_frame, weights, time_period):
         if(biggest_variation > max_drawdown_value):
             max_drawdown_value = biggest_variation
     return max_drawdown_value
+
+def persistance_counter(clusters):
+    nr_clusters = len(clusters[0])
+    output = {}
+    base_clusters = {}
+
+    for i in range(nr_clusters):
+        output[i] = []
+        base_clusters[i] = np.array(clusters[0][i])
+
+    for rb in clusters:
+        cl = []
+        for nr, cluster in rb.items():
+            cl.append(cluster)
+        for nr, cluster in rb.items():
+            l = 0
+            for c in cl:
+                int = len(np.intersect1d(base_clusters[nr],np.array(c)))
+                if int > l:
+                    l = int
+                else:
+                    pass
+            output[nr].append(l)
+    return output

@@ -14,8 +14,6 @@ from pypfopt import expected_returns
 from scipy.optimize import minimize
 from dateutil.relativedelta import relativedelta
 
-NasdaqAPIKEY = "LyHsXQy2qdCMyB3bzQ-F"
-
 def sse(matrix, maxClusters = 10, graph = True):
     sse = []
     for k in range(1, maxClusters + 1):
@@ -187,7 +185,7 @@ def optPortMVO(returns, cov = pd.DataFrame(), nrIter = 100000, res = 4, rf = 0, 
 
     return highest_sharpe_weights
 
-def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10, score = "omega", constraint = "Long-Only"):
+def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10, score = "omega", constraint = "Long-Only", ret_clust = False):
 
     #print("Nested clustering algorithm calculating ...")
     #data perparation
@@ -229,12 +227,19 @@ def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_ini
 
         w_inter_clusters = pd.Series(optPortMVO(intra_returns, cov_in = False, constraint = constraint).flatten(), index=intra_returns.columns)
 
+    else:
+        raise NameError('Please enter valid optimization score!')
+
     nco = w_intra_clusters.mul(w_inter_clusters, axis=1).sum(axis=1).values.reshape(-1,1)
     nco = nco.reshape(-1)
 
     #print("Calculations completed sucessful!")
 
-    return nco
+    if ret_clust:
+        return nco, clstrs
+
+    else:
+        return nco
 
 TOLERANCE = 1e-11
 
@@ -341,12 +346,13 @@ def optPortRPP(returns):
     # It returns the optimised weights
     return weights
 
-def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly"):
+def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly", ret_clust = False):
 
     #find initial dates and creates variables
     returns = pd.Series(0, index = df.index)
     curren_start = investment_start
     investing = True
+    clusters = [] 
     #print("Calculations for rebalanced portfolio in progress...")
 
     #loop over test set and get returns
@@ -375,7 +381,11 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
         min_matrix = np.array(pairwise_distances(corr2, metric = "minkowski"))
 
         #call algorithm
-        w = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only")
+        if ret_clust:
+            w, clst = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only", ret_clust = True)
+            clusters.append(clst)
+        else:
+            w = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only")
 
         #invest
         returns_ = pd.Series(test_set.apply(lambda row: np.average(row, weights = w), axis=1), index = test_set.index)
@@ -388,4 +398,7 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
 
     returns = returns[returns != 0.0]
     #print("Calculations completed sucessfuly!")
-    return returns
+    if ret_clust:
+        return returns, clusters
+    else:
+        return returns
