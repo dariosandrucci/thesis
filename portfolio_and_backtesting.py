@@ -5,6 +5,115 @@ from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 import pandas_datareader as pdr
 import statsmodels.api as sm
+from datetime import timedelta
+
+# Functions
+
+def regression(X, y):
+    X = pd.DataFrame(X, columns = ["X"])
+    y = pd.DataFrame(y, columns = ["y"])
+
+    X2 = sm.add_constant(X)
+    est = sm.OLS(y, X2)
+    est2 = est.fit()
+    alpha = est2.params[0]
+    beta = est2.params[1]
+    p_alpha = est2.pvalues[0]
+    p_beta = est2.pvalues[1]
+    r2 = est2.rsquared
+
+    return alpha, p_alpha, beta, p_beta, r2
+
+def reg_analysis(returns):
+        
+        start  = returns.index[0] - timedelta(days = 1)
+        end  = returns.index[len(returns.index)-1]
+        mkt_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+        mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
+        X = pd.DataFrame(mkt_returns)
+        y = returns
+
+        if y.index[0] == X.index[0]:
+            pass
+        else:
+            print("Data head has to be trimmed....")
+            if y.index[0] > X.index[0]:
+                X = X.iloc[1:]
+            elif y.index[0] < X.index[0]:
+                y = y.iloc[1:]
+        
+        if y.index[len(y)-1] == X.index[len(X)-1]:
+            pass
+        else:
+            print("Data tail has to be trimmed....")
+            if y.index[len(y)-1] > X.index[len(X)-1]:
+                y = y.iloc[:len(y)-2]
+            if y.index[len(y)-1] < X.index[len(X)-1]:
+                X = X.iloc[:len(X)-2]
+
+        X2 = sm.add_constant(X)
+        est = sm.OLS(y, X2)
+        est2 = est.fit()
+        alpha = est2.params[0]
+        beta = est2.params[1]
+        p_alpha = est2.pvalues[0]
+        p_beta = est2.pvalues[1]
+        r2 = est2.rsquared
+
+        return alpha, beta, p_alpha, p_beta, r2
+
+def returns_annualized(returns):
+    return returns.mean() * 252
+
+def std_annualized(returns):
+    return np.std(returns) * np.sqrt(252)
+
+def sharpe_ratio(returns):
+    ret = returns.mean() * 252
+    vol = np.std(returns) * np.sqrt(252)
+    return ret / vol
+
+def mdd(returns):
+    return (returns - returns.rolling(len(returns), min_periods=1).max()).min()
+
+def information_ratio(returns, benchmark_returns = "SPY"):
+    start  = returns.index[0] - timedelta(days = 1)
+    end  = returns.index[len(returns.index)-1]
+    mkt_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+    mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
+    X = pd.DataFrame(mkt_returns)
+    y = returns
+
+    if y.index[0] == X.index[0]:
+        pass
+    else:
+        if y.index[0] > X.index[0]:
+            X = X.iloc[1:]
+        elif y.index[0] < X.index[0]:
+            y = y.iloc[1:]
+    
+    if y.index[len(y)-1] == X.index[len(X)-1]:
+        pass
+    else:
+        if y.index[len(y)-1] > X.index[len(X)-1]:
+            y = y.iloc[:len(y)-2]
+        if y.index[len(y)-1] < X.index[len(X)-1]:
+            X = X.iloc[:len(X)-2]
+
+    mkt_returns = np.array(X).flatten()
+    returns = np.array(y)
+
+    return_difference = np.subtract(returns,mkt_returns)
+    volatility = np.std(return_difference) 
+    information_ratio = (return_difference.mean() * 252) / (volatility * np.sqrt(252))
+    return information_ratio
+
+def sortino_ratio(returns, N = 252, rf = 0):
+    mean = returns.mean() * N -rf
+    std_neg = returns[returns<0].std()*np.sqrt(N)
+    return mean/std_neg
+
+# Classes
 
 class Portfolio:
 
@@ -36,66 +145,23 @@ class Portfolio:
         self.sharpe_ratio = self.ereturn / self.volatility
         self.sharpe_ratio_ann = self.ereturn_ann / self.volatility_ann
 
-    def drawdown_report(self):
-        pass
-    
-    def alpha_report(self, return_values = True):
-        print("Getting benchmark data....")
-        
-        mkt_returns = pdr.get_data_yahoo(["SPY"], self.start, self.end)["Close"]
-        mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
-        X = pd.DataFrame(self.returns[1:], columns = [self.name])
-        y = mkt_returns
 
-        if y.index[0] == X.index[0]:
-            pass
-        else:
-            print("Data head has to be trimmed....")
-            if y.index[0] > X.index[0]:
-                X = X.iloc[1:]
-            elif y.index[0] < X.index[0]:
-                y = y.iloc[1:]
-        
-        if y.index[len(y)-1] == X.index[len(X)-1]:
-            pass
-        else:
-            print("Data tail has to be trimmed....")
-            if y.index[len(y)-1] > X.index[len(X)-1]:
-                y = y.iloc[:len(y)-2]
-            if y.index[len(y)-1] < X.index[len(X)-1]:
-                X = X.iloc[:len(X)-2]
-
-        print("Data was imported sucessfully!\n")
-
-        X2 = sm.add_constant(X)
-        est = sm.OLS(y, X2)
-        est2 = est.fit()
-        alpha = est2.params[0]
-        beta = est2.params[1]
-        p_alpha = est2.pvalues[0]
-        p_beta = est2.pvalues[1]
-        r2 = est2.rsquared
-
-        print("The model was calculated as follows:\n")
-        print(f"Alpha: {alpha}")
-        print(f"Beta: {beta}")
-        print(f"P-Value Alpha: {p_alpha}")
-        print(f"P-Value Beta: {p_beta}")
-        print(f"Model R2: {r2}")
+    def performance_report(self, return_values = False):
+        pr = pd.DataFrame([[0]*9], index = [self.name],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
+        ret = returns_annualized(self.returns)
+        vol = std_annualized(self.returns)
+        sharpe = sharpe_ratio(self.returns)
+        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns)
+        sortino = sortino_ratio(self.returns)
+        ir = information_ratio(self.returns)
+        mdds = mdd(self.returns)
+        new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
+        pr.loc[self.name] = new_col
 
         if return_values == True:
-            return alpha, beta, p_alpha, p_beta, r2
+            return self.name, new_col
         else:
-            return None
-
-    def performance_report(self, return_values = True):
-        pr = {self.name : [self.total_return, self.ereturn, self.volatility, self.ereturn_ann, self.volatility_ann, self.sharpe_ratio_ann]}
-        pr = pd.DataFrame(pr, index = ["Total Return", "Expected Return", "Daily Volatility", "Annualized Returns", "Annualized Volatility", "Sharpe Ratio"])
-        print(f"The performance metrics for the portfolio {self.name} are:\n")
-        print(pr)
-        if return_values == True:
-            return pr
-        else:
+            print(pr)
             return None
 
     def performance_plot(self):
@@ -123,66 +189,23 @@ class Portfolio_Ret:
         self.sharpe_ratio = self.ereturn / self.volatility
         self.sharpe_ratio_ann = self.ereturn_ann / self.volatility_ann
 
-    def drawdown_report(self):
-        pass
-    
-    def alpha_report(self, return_values = True):
-        print("Getting benchmark data....")
-        
-        mkt_returns = pdr.get_data_yahoo(["SPY"], self.start, self.end)["Close"]
-        mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
-        X = pd.DataFrame(self.returns[1:], columns = [self.name])
-        y = mkt_returns
+    def performance_report(self, return_values = False):
+        pr = pd.DataFrame([[0]*9], index = [self.name],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
+        ret = returns_annualized(self.returns)
+        vol = std_annualized(self.returns)
+        sharpe = sharpe_ratio(self.returns)
+        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns)
+        sortino = sortino_ratio(self.returns)
+        ir = information_ratio(self.returns)
+        mdds = mdd(self.returns)
+        new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
+        pr.loc[self.name] = new_col
 
-        if y.index[0] == X.index[0]:
-            pass
-        else:
-            print("Data head has to be trimmed....")
-            if y.index[0] > X.index[0]:
-                X = X.iloc[1:]
-            elif y.index[0] < X.index[0]:
-                y = y.iloc[1:]
-        
-        if y.index[len(y)-1] == X.index[len(X)-1]:
-            pass
-        else:
-            print("Data tail has to be trimmed....")
-            if y.index[len(y)-1] > X.index[len(X)-1]:
-                y = y.iloc[:len(y)-2]
-            if y.index[len(y)-1] < X.index[len(X)-1]:
-                X = X.iloc[:len(X)-2]
-
-        print("Data was imported sucessfully!\n")
-
-        X2 = sm.add_constant(X)
-        est = sm.OLS(y, X2)
-        est2 = est.fit()
-        alpha = est2.params[0]
-        beta = est2.params[1]
-        p_alpha = est2.pvalues[0]
-        p_beta = est2.pvalues[1]
-        r2 = est2.rsquared
-
-        print("The model was calculated as follows:\n")
-        print(f"Alpha: {alpha}")
-        print(f"Beta: {beta}")
-        print(f"P-Value Alpha: {p_alpha}")
-        print(f"P-Value Beta: {p_beta}")
-        print(f"Model R2: {r2}")
 
         if return_values == True:
-            return alpha, beta, p_alpha, p_beta, r2
+            return self.name, new_col
         else:
-            return None
-
-    def performance_report(self, return_values = True):
-        pr = {self.name : [self.total_return, self.ereturn, self.volatility, self.ereturn_ann, self.volatility_ann, self.sharpe_ratio_ann]}
-        pr = pd.DataFrame(pr, index = ["Total Return", "Expected Return", "Daily Volatility", "Annualized Returns", "Annualized Volatility", "Sharpe Ratio"])
-        print(f"The performance metrics for the portfolio {self.name} are:\n")
-        print(pr)
-        if return_values == True:
-            return pr
-        else:
+            print(pr)
             return None
 
     def performance_plot(self):
@@ -204,6 +227,44 @@ class PortfolioBenchmarking:
                 pass
             else:
                 raise NameError('Portfolios must have the same time range!')
+
+    def performance_report(self, return_value = True, withSPY = True):
+
+        if withSPY: 
+            inds = ["SPY"]
+        else: 
+            inds = []
+
+        for port in self.portfolios:
+            inds.append(port.name)
+
+        pr = pd.DataFrame([[0]*9], index = [inds],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
+
+        for port in self.portfolios:
+            n, v = port.performance_report(True)
+            pr.loc[n] = v
+
+        if withSPY:
+            start = self.portfolios[0].returns.index[0]
+            end = self.portfolios[0].returns.index[len(self.portfolios[0].returns)-1]
+            spx_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+            spx_returns = spx_returns.pct_change().dropna(axis = 0)
+
+            ret = returns_annualized(spx_returns)
+            vol = std_annualized(spx_returns)
+            sharpe = sharpe_ratio(spx_returns)
+            alpha, beta, pAlpha, _, _ = reg_analysis(spx_returns)
+            sortino = sortino_ratio(spx_returns)
+            ir = information_ratio(spx_returns)
+            mdds = mdd(spx_returns)
+            new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
+            pr.loc["SPY"] = new_col
+
+        if return_value:
+            return pr
+        
+        else:
+            print(pr)
 
     def plot_performance(self, withSPY = True):
 
@@ -228,23 +289,7 @@ class PortfolioBenchmarking:
 
         return None
 
-    def report_returns(self):
-        pass
-
-    def report_alpha(self):
-        pass
-
 #to adapt
-def max_drawdown(portfolio_data_frame, weights, time_period):
-    simulated_portfolio = weights[0]*portfolio_data_frame.ix[:,0]
-    for i in range(1, len(portfolio_data_frame.columns)):
-        simulated_portfolio += weights[i]*portfolio_data_frame.ix[:,i]
-    max_drawdown_value = float('-inf')
-    for i in range(int(len(simulated_portfolio)/time_period)-1):
-        biggest_variation = max(simulated_portfolio[i*time_period:(i+1)*time_period])/min(simulated_portfolio[i*time_period:(i+1)*time_period])
-        if(biggest_variation > max_drawdown_value):
-            max_drawdown_value = biggest_variation
-    return max_drawdown_value
 
 def persistance_counter(clusters):
     nr_clusters = len(clusters[0])
