@@ -10,8 +10,8 @@ from datetime import timedelta
 # Functions
 
 def regression(X, y):
-    X = pd.DataFrame(X, columns = ["X"])
-    y = pd.DataFrame(y, columns = ["y"])
+    #X = pd.DataFrame(X.values, columns = ["X"])
+    #y = pd.DataFrame(y.values, columns = ["y"])
 
     X2 = sm.add_constant(X)
     est = sm.OLS(y, X2)
@@ -24,32 +24,36 @@ def regression(X, y):
 
     return alpha, p_alpha, beta, p_beta, r2
 
-def reg_analysis(returns):
+def reg_analysis(returns, bm = "SPY"):
         
         start  = returns.index[0] - timedelta(days = 1)
         end  = returns.index[len(returns.index)-1]
-        mkt_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+        mkt_returns = pdr.get_data_yahoo([bm], start, end)["Close"]
         mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
         X = pd.DataFrame(mkt_returns)
-        y = returns
+        y = pd.DataFrame(returns)
 
-        if y.index[0] == X.index[0]:
-            pass
-        else:
-            print("Data head has to be trimmed....")
-            if y.index[0] > X.index[0]:
-                X = X.iloc[1:]
-            elif y.index[0] < X.index[0]:
-                y = y.iloc[1:]
+        comb = pd.merge(X, y, how = "inner", left_index = True, right_index = True)
+        X = comb.iloc[:,0]
+        y = comb.iloc[:,1]
+
+        #if y.index[0] == X.index[0]:
+        #    pass
+        #else:
+        #    print("Data head has to be trimmed....")
+        #    if y.index[0] > X.index[0]:
+        #        X = X.iloc[1:]
+        #    elif y.index[0] < X.index[0]:
+        #        y = y.iloc[1:]
         
-        if y.index[len(y)-1] == X.index[len(X)-1]:
-            pass
-        else:
-            print("Data tail has to be trimmed....")
-            if y.index[len(y)-1] > X.index[len(X)-1]:
-                y = y.iloc[:len(y)-2]
-            if y.index[len(y)-1] < X.index[len(X)-1]:
-                X = X.iloc[:len(X)-2]
+        #if y.index[len(y)-1] == X.index[len(X)-1]:
+        #    pass
+        #else:
+        #    print("Data tail has to be trimmed....")
+        ##    if y.index[len(y)-1] > X.index[len(X)-1]:
+        #        y = y.iloc[:len(y)-2]
+        #    if y.index[len(y)-1] < X.index[len(X)-1]:
+        #        X = X.iloc[:len(X)-2]
 
         X2 = sm.add_constant(X)
         est = sm.OLS(y, X2)
@@ -79,26 +83,30 @@ def mdd(returns):
 def information_ratio(returns, benchmark_returns = "SPY"):
     start  = returns.index[0] - timedelta(days = 1)
     end  = returns.index[len(returns.index)-1]
-    mkt_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
+    mkt_returns = pdr.get_data_yahoo([benchmark_returns], start, end)["Close"]
     mkt_returns = mkt_returns.pct_change().dropna(axis = 0)
     X = pd.DataFrame(mkt_returns)
-    y = returns
+    y = pd.DataFrame(returns)
 
-    if y.index[0] == X.index[0]:
-        pass
-    else:
-        if y.index[0] > X.index[0]:
-            X = X.iloc[1:]
-        elif y.index[0] < X.index[0]:
-            y = y.iloc[1:]
+    comb = pd.merge(X, y, how = "inner", left_index = True, right_index = True)
+    X = comb.iloc[:,0]
+    y = comb.iloc[:,1]
+
+    #if y.index[0] == X.index[0]:
+    #    pass
+    #else:
+    #    if y.index[0] > X.index[0]:
+    #        X = X.iloc[1:]
+    #    elif y.index[0] < X.index[0]:
+    #        y = y.iloc[1:]
     
-    if y.index[len(y)-1] == X.index[len(X)-1]:
-        pass
-    else:
-        if y.index[len(y)-1] > X.index[len(X)-1]:
-            y = y.iloc[:len(y)-2]
-        if y.index[len(y)-1] < X.index[len(X)-1]:
-            X = X.iloc[:len(X)-2]
+    #if y.index[len(y)-1] == X.index[len(X)-1]:
+    #    pass
+    #else:
+    #    if y.index[len(y)-1] > X.index[len(X)-1]:
+    #        y = y.iloc[:len(y)-2]
+    #    if y.index[len(y)-1] < X.index[len(X)-1]:
+    #        X = X.iloc[:len(X)-2]
 
     mkt_returns = np.array(X).flatten()
     returns = np.array(y)
@@ -146,14 +154,14 @@ class Portfolio:
         self.sharpe_ratio_ann = self.ereturn_ann / self.volatility_ann
 
 
-    def performance_report(self, return_values = False):
+    def performance_report(self, return_values = False, bm = "SPY"):
         pr = pd.DataFrame([[0]*9], index = [self.name],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
         ret = returns_annualized(self.returns)
         vol = std_annualized(self.returns)
         sharpe = sharpe_ratio(self.returns)
-        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns)
+        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns, bm)
         sortino = sortino_ratio(self.returns)
-        ir = information_ratio(self.returns)
+        ir = information_ratio(self.returns, bm)
         mdds = mdd(self.returns)
         new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
         pr.loc[self.name] = new_col
@@ -189,14 +197,14 @@ class Portfolio_Ret:
         self.sharpe_ratio = self.ereturn / self.volatility
         self.sharpe_ratio_ann = self.ereturn_ann / self.volatility_ann
 
-    def performance_report(self, return_values = False):
+    def performance_report(self, return_values = False, bm = "SPY"):
         pr = pd.DataFrame([[0]*9], index = [self.name],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
         ret = returns_annualized(self.returns)
         vol = std_annualized(self.returns)
         sharpe = sharpe_ratio(self.returns)
-        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns)
+        alpha, beta, pAlpha, _, _ = reg_analysis(self.returns, bm)
         sortino = sortino_ratio(self.returns)
-        ir = information_ratio(self.returns)
+        ir = information_ratio(self.returns, bm)
         mdds = mdd(self.returns)
         new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
         pr.loc[self.name] = new_col
@@ -228,7 +236,7 @@ class PortfolioBenchmarking:
             else:
                 raise NameError('Portfolios must have the same time range!')
 
-    def performance_report(self, return_value = True, withSPY = True):
+    def performance_report(self, return_value = True, withSPY = True, bm = "SPY"):
 
         if withSPY: 
             inds = ["SPY"]
@@ -241,7 +249,7 @@ class PortfolioBenchmarking:
         pr = pd.DataFrame([[0]*9], index = [inds],columns = ["ARet", "AVol", "Alpha", "p Alpha", "Beta","Sharpe", "Sortino", "IR", "MDD"])
 
         for port in self.portfolios:
-            n, v = port.performance_report(True)
+            n, v = port.performance_report(True, bm = bm)
             pr.loc[n] = v
 
         if withSPY:
@@ -253,9 +261,9 @@ class PortfolioBenchmarking:
             ret = returns_annualized(spx_returns)
             vol = std_annualized(spx_returns)
             sharpe = sharpe_ratio(spx_returns)
-            alpha, beta, pAlpha, _, _ = reg_analysis(spx_returns)
+            alpha, beta, pAlpha, _, _ = reg_analysis(spx_returns, bm)
             sortino = sortino_ratio(spx_returns)
-            ir = information_ratio(spx_returns)
+            ir = information_ratio(spx_returns, bm)
             mdds = mdd(spx_returns)
             new_col = [round(ret,4), round(vol,4), round(alpha,4), round(pAlpha,4), round(beta,4), round(sharpe,4), round(sortino,4), round(ir,4), round(mdds,4)]
             pr.loc["SPY"] = new_col

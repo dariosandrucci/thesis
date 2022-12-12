@@ -5,6 +5,7 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from tqdm import tqdm
 from denoising_and_detoning import *
 from data_engineering import *
+from portfolio_and_backtesting import *
 from kneed import KneeLocator
 from sklearn.metrics import davies_bouldin_score
 from sklearn.metrics import pairwise_distances
@@ -82,7 +83,7 @@ def clusterKMeansBase(matrix, nrClusters=10, n_init=10):
     #The [outer] loop repeats the first loop multiple times, thereby obtaining different initializations. Ref: de Prado and Lewis (2018)
     #DETECTION OF FALSE INVESTMENT STRATEGIES USING UNSUPERVISED LEARNING METHODS
         for num_clusters in clst:
-            kmeans_ = KMeans(n_clusters=num_clusters, init = "k-means++", n_init=10, max_iter=300)
+            kmeans_ = KMeans(n_clusters=num_clusters, init = "random", n_init=10, max_iter=300)
             kmeans_ = kmeans_.fit(matrix)
             silh_coef = silhouette_samples(matrix, kmeans_.labels_)
             stat = (silh_coef.mean()/silh_coef.std(), silh_coef_optimal.mean()/silh_coef_optimal.std())
@@ -346,7 +347,31 @@ def optPortRPP(returns):
     # It returns the optimised weights
     return weights
 
-def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly", ret_clust = False):
+def p_tuner(train_set, val_set, corr, th = 0.074, iter = 1000):
+
+    min_ports = []
+    ps = [1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0]
+
+    for p in tqdm(ps):
+        min_matrix_ = np.array(pairwise_distances(corr, metric = "minkowski", p = p))
+        nr_clusters_sse = sse(min_matrix_, graph = False)
+        w_ = optPort_nco(train_set, min_matrix_, nr_clusters_sse, th, iter, 5)
+        name = f"P = {p}; C = {nr_clusters_sse}"
+        port = Portfolio(name, val_set, w_)
+        min_ports.append(port)
+
+    sharpes = []
+
+    for port in min_ports:
+        min_rets = port.returns
+        sr = sharpe_ratio(min_rets)
+        sharpes.append(sr)
+    
+    pv = ps[sharpes.index(max(sharpes))]
+
+    return pv
+
+def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly", ret_clust = False, th = 0.074, tuneIter = 1000):
 
     #find initial dates and creates variables
     returns = pd.Series(0, index = df.index)
@@ -359,12 +384,13 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
     while investing == True:
 
         #set dates
-        train_start = curren_start - relativedelta(years = 1)
+        train_start = curren_start - relativedelta(months = 6)
         train_end = curren_start
         test_end = curren_start + relativedelta(months = 1)
 
         #devide data
         train_set = df.loc[train_start : train_end]
+        train_set, val_set = testTrainSplit(train_set, validation_set = False, w_tt = [0.5,0.5])
         test_set = df.loc[curren_start : test_end]
 
         #test if test set is not empty
@@ -373,19 +399,20 @@ def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, trai
         else:
             investing = False
             break
+        
+        #phase1: p parameter calculation
+        corr_train = denoise_and_detone(train_set)
+        pv = p_tuner(train_set, val_set, corr_train, th = th, iter = tuneIter)
 
-        #calculate input
-        corr0 = getCorrMatrix(train_set)
-        eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
-        corr2 = detoneMatrix(corr1, eVal1, eVec1)
-        min_matrix = np.array(pairwise_distances(corr2, metric = "minkowski"))
+        #phase2: calculate weights based on val set
+        corr_val = denoise_and_detone(val_set)
+        min_matrix = np.array(pairwise_distances(corr_val, metric = "minkowski", p = pv))
 
-        #call algorithm
         if ret_clust:
-            w, clst = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only", ret_clust = True)
+            w, clst = optPort_nco(val_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only", ret_clust = True, threshold = th)
             clusters.append(clst)
         else:
-            w = optPort_nco(train_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only")
+            w = optPort_nco(val_set, min_matrix, numClusters = numClusters, nrIter = nrIter, n_init = 5, score = "omega", constraint = "Long-Only", threshold = th)
 
         #invest
         returns_ = pd.Series(test_set.apply(lambda row: np.average(row, weights = w), axis=1), index = test_set.index)
