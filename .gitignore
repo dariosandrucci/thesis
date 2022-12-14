@@ -3,3 +3,5 @@ thesis_venv
 test.ipynb
 __pycache__
 algo_tests.ipynb
+figures
+tables

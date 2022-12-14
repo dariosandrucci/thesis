@@ -3,7 +3,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.neighbors import KernelDensity
 from scipy.optimize import minimize
+import seaborn as sns
 import warnings
+from data_engineering import *
 
 #warning surpressor
 def fxn():
@@ -82,18 +84,22 @@ def denoisedCorr2(eVal,eVec,nFacts,alpha=0):
     corr2=corr0+alpha*corr1+(1-alpha)*np.diag(np.diag(corr1)) 
     return corr2
 
-def plotEvalDiff(eVal0, eVal1, method = 1):
+def plotEvalDiff(eVal0, eVal1, method = 1, palette = "RdYlBu_r", save = ""):
     if method == 1:
         m = "Constant Residual"
     else:
         m = "Target Shrinkage"
     ax = plt.figure().add_subplot(111)
-    plt.plot(np.diagonal(eVal0),label = 'Original eigen-function')
-    plt.plot(np.diagonal(eVal1),label = f'Denoised eigen-function ({m})',linestyle = '--')
-    ax.legend()
+    sns.set_style("darkgrid", {"axes.facecolor": ".9"})
+    sns.set_palette(palette)
+    sns.lineplot(np.diagonal(eVal0),label = 'Original eigen-function')
+    sns.lineplot(np.diagonal(eVal1),label = f'Denoised eigen-function ({m})')
     ax.set_yscale('log')
     ax.set_xlabel('Eigenvalue number')
     ax.set_ylabel('Eigenvalue (log-scale)')
+    ax.set_title('Eigenvalues Original vs. Denoised')
+    if save != "":
+        plt.savefig(f"figures/{save}.png")
     plt.show()
 
 def denoiseMatrix(matrix, method = 1, alpha = 0):
@@ -119,3 +125,11 @@ def detoneMatrix(corr, eVal, eVec, mc = 1):
     corr = corr - corr_
     corr = cov2corr(corr)
     return corr
+
+#combined
+
+def denoise_and_detone(rets):
+    corr0 = getCorrMatrix(rets)
+    eVal0, eVec0, eVal1, eVec1, corr1, var0 = denoiseMatrix(corr0)
+    corr2 = detoneMatrix(corr1, eVal1, eVec1)
+    return corr2

@@ -52,7 +52,7 @@ def getData(startDate, endDate, tickers, format = "returns", downloaded = True):
             return None
 
 def getCorrMatrix(returns):
-    return np.corrcoef(returns, rowvar=False)
+    return np.corrcoef(returns, rowvar = 0)
 
 def testTrainSplit(df, validation_set = True, w_tt = [0.8, 0.2], w_tvt = [0.4,0.4,0.2]):
     if validation_set == True:

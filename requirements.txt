@@ -12,3 +12,4 @@ statsmodels
 kneed
 PyPortfolioOpt
 nasdaq-data-link
+jinja2
