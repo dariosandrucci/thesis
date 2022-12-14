@@ -223,8 +223,9 @@ class Portfolio_Ret:
 
 class PortfolioBenchmarking:
 
-    def __init__(self, portfolios):
+    def __init__(self, portfolios, name = "Portfolios"):
         
+        self.name = name
         self.portfolios = portfolios
     
         #input checks
@@ -274,7 +275,7 @@ class PortfolioBenchmarking:
         else:
             print(pr)
 
-    def plot_performance(self, withSPY = True):
+    def plot_performance(self, withSPY = True, palette = "RdYlBu_r", save = ""):
 
         #create returns dataframe
         self.cum_returns = pd.DataFrame(index = self.portfolios[0].cum_returns.index)
@@ -289,12 +290,20 @@ class PortfolioBenchmarking:
             spx_returns = pdr.get_data_yahoo(["SPY"], start, end)["Close"]
             spx_returns = spx_returns.pct_change().dropna(axis = 0)
             spx_cum = np.cumprod(1 + spx_returns) - 1
-            spx_cum.columns = ["S&P 500 Index"]
+            spx_cum.columns = ["SPY"]
             self.cum_returns = self.cum_returns.merge(spx_cum, how = "inner", left_index = True, right_index = True)
 
-        sns.lineplot(self.cum_returns)
+        sns.set_style("darkgrid", {"axes.facecolor": ".9"})
+        plt.figure(figsize = (10,7))
+        sns.set_palette(palette)
+        for i in self.cum_returns.columns:
+            sns.lineplot(data = self.cum_returns.loc[:,i], label = i)
+        plt.xlabel("Date")
+        plt.ylabel("Cummulative Returns")
+        plt.title(f"Benchmarking: {self.name}")
+        if save != "":
+            plt.savefig(f'figures/{save}.png')
         plt.show()
-
         return None
 
 #to adapt
