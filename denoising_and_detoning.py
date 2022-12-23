@@ -1,3 +1,5 @@
+#---PACKAGES---#
+
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,7 +13,11 @@ from data_engineering import *
 def fxn():
     warnings.warn("Runtime", RuntimeWarning)
 
-# Denoising
+#---FUNCTIONS---#
+
+#DENOISE MATRIX
+#Use: Following function calculate the desnoised correlation matrix based on the marcenko-pastur theorem
+
 def mpPDF(var,q,pts):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -116,7 +122,8 @@ def denoiseMatrix(matrix, method = 1, alpha = 0):
     eVal1, eVec1 = getPCA(corr1)
     return eVal0, eVec0, eVal1, eVec1, corr1, var0
 
-#detoning
+#DETONE MATRIX
+#Use: The following code calculates the detoned correlation matrix
 
 def detoneMatrix(corr, eVal, eVec, mc = 1):
     eVal_ = eVal[:mc, :mc]
@@ -126,7 +133,8 @@ def detoneMatrix(corr, eVal, eVec, mc = 1):
     corr = cov2corr(corr)
     return corr
 
-#combined
+#Combined processing
+#Use: The following code takes in a returns dataframe calculates the denoised and detoned correlation matrix
 
 def denoise_and_detone(rets):
     corr0 = getCorrMatrix(rets)
