@@ -1,3 +1,5 @@
+#---PACKAGES---#
+
 import pandas as pd
 import numpy as np
 import os
@@ -5,7 +7,10 @@ from datetime import datetime as dt
 import pandas_datareader as pdr
 from yahoo_fin import stock_info as si
 
-# Getting the data
+#---FUNCTIONS---#
+
+#SP500 tickers
+#Use: Get the tickers for a selected market (This version only SP500)
 
 def getTickers(market = "SP500"):
     if market == "SP500":
@@ -13,14 +18,23 @@ def getTickers(market = "SP500"):
     else:
         pass
 
+#PRICE DOWNLOADER
+#Downlads the price data for a given set of securities
+
 def downloadPrices(startDate, endDate, tickers):
     prices = pdr.get_data_yahoo(tickers, startDate, endDate)["Close"]
     return prices
+
+#RETURN CONVERTER
+#Calculated a returns dataframe froma set of prices
 
 def getReturns(prices):
     for stock in prices.columns:
         prices[stock] = prices[stock].pct_change()
     return prices.iloc[1:]
+
+#DATASET LOADER
+#Combines all functions above to provide a desired dataframe for any required experiments
 
 def getData(startDate, endDate, tickers, format = "returns", downloaded = True):
     path = os.getcwd() + "/data/returns_data.csv"
@@ -51,8 +65,14 @@ def getData(startDate, endDate, tickers, format = "returns", downloaded = True):
             print("File already exists. Please remove before downloading a new one.")
             return None
 
+#Calculates the empirical covariance matrix from a given dataset
+#Downlads the price data for a given set of securities
+
 def getCorrMatrix(returns):
     return np.corrcoef(returns, rowvar = 0)
+
+#TRAIN (VAL) TEST SPLITTER
+#Splits datasets along the timeaxis to retrieve train, validation and test sets
 
 def testTrainSplit(df, validation_set = True, w_tt = [0.8, 0.2], w_tvt = [0.4,0.4,0.2]):
     if validation_set == True:

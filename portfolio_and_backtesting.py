@@ -1,3 +1,5 @@
+#---PACKAGES---#
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -7,11 +9,12 @@ import pandas_datareader as pdr
 import statsmodels.api as sm
 from datetime import timedelta
 
-# Functions
+#---FUNCTIONS---#
+
+#LINEAR REGRESSION
+#Use: The following two function implement a linear regression function for given inputs and returns the regression metrics
 
 def regression(X, y):
-    #X = pd.DataFrame(X.values, columns = ["X"])
-    #y = pd.DataFrame(y.values, columns = ["y"])
 
     X2 = sm.add_constant(X)
     est = sm.OLS(y, X2)
@@ -37,24 +40,6 @@ def reg_analysis(returns, bm = "SPY"):
         X = comb.iloc[:,0]
         y = comb.iloc[:,1]
 
-        #if y.index[0] == X.index[0]:
-        #    pass
-        #else:
-        #    print("Data head has to be trimmed....")
-        #    if y.index[0] > X.index[0]:
-        #        X = X.iloc[1:]
-        #    elif y.index[0] < X.index[0]:
-        #        y = y.iloc[1:]
-        
-        #if y.index[len(y)-1] == X.index[len(X)-1]:
-        #    pass
-        #else:
-        #    print("Data tail has to be trimmed....")
-        ##    if y.index[len(y)-1] > X.index[len(X)-1]:
-        #        y = y.iloc[:len(y)-2]
-        #    if y.index[len(y)-1] < X.index[len(X)-1]:
-        #        X = X.iloc[:len(X)-2]
-
         X2 = sm.add_constant(X)
         est = sm.OLS(y, X2)
         est2 = est.fit()
@@ -65,6 +50,9 @@ def reg_analysis(returns, bm = "SPY"):
         r2 = est2.rsquared
 
         return alpha, beta, p_alpha, p_beta, r2
+
+#PERFORMANCE METRICS
+#Use: The following functions return various performance metrics for an input of asset returns
 
 def returns_annualized(returns):
     return returns.mean() * 252
@@ -92,22 +80,6 @@ def information_ratio(returns, benchmark_returns = "SPY"):
     X = comb.iloc[:,0]
     y = comb.iloc[:,1]
 
-    #if y.index[0] == X.index[0]:
-    #    pass
-    #else:
-    #    if y.index[0] > X.index[0]:
-    #        X = X.iloc[1:]
-    #    elif y.index[0] < X.index[0]:
-    #        y = y.iloc[1:]
-    
-    #if y.index[len(y)-1] == X.index[len(X)-1]:
-    #    pass
-    #else:
-    #    if y.index[len(y)-1] > X.index[len(X)-1]:
-    #        y = y.iloc[:len(y)-2]
-    #    if y.index[len(y)-1] < X.index[len(X)-1]:
-    #        X = X.iloc[:len(X)-2]
-
     mkt_returns = np.array(X).flatten()
     returns = np.array(y)
 
@@ -121,7 +93,37 @@ def sortino_ratio(returns, N = 252, rf = 0):
     std_neg = returns[returns<0].std()*np.sqrt(N)
     return mean/std_neg
 
-# Classes
+#PERSISTANCE COUNTER
+#Use: Takes in a list of cluster destributions and returns for each item (destribution map) in the list a map of equal cluster members in each cluster to the destributinon given in the initial list-item 
+
+def persistance_counter(clusters):
+    nr_clusters = len(clusters[0])
+    output = {}
+    base_clusters = {}
+
+    for i in range(nr_clusters):
+        output[i] = []
+        base_clusters[i] = np.array(clusters[0][i])
+
+    for rb in clusters:
+        cl = []
+        for nr, cluster in rb.items():
+            cl.append(cluster)
+        for nr, cluster in rb.items():
+            l = 0
+            for c in cl:
+                int = len(np.intersect1d(base_clusters[nr],np.array(c)))
+                if int > l:
+                    l = int
+                else:
+                    pass
+            output[nr].append(l)
+    return output
+
+#---FUNCTIONS---#
+
+#PORTFOLIO
+#Use: Implements a portfolio based input data and a set of weights for the included assets
 
 class Portfolio:
 
@@ -177,6 +179,9 @@ class Portfolio:
         plt.show()
         return None
 
+#PORTFOLIO
+#Use: Implements a portfolio based of daily returns as input data
+
 class Portfolio_Ret:
 
     def __init__(self, portfolio_name , returns):
@@ -220,6 +225,9 @@ class Portfolio_Ret:
         sns.lineplot(self.cum_returns)
         plt.show()
         return None
+
+#PORTFOLIO
+#Use: Enables performance benchmarking bewteen different implemented portfolio classes. Outputs graphs and tables.
 
 class PortfolioBenchmarking:
 
@@ -305,29 +313,3 @@ class PortfolioBenchmarking:
             plt.savefig(f'figures/{save}.png')
         plt.show()
         return None
-
-#to adapt
-
-def persistance_counter(clusters):
-    nr_clusters = len(clusters[0])
-    output = {}
-    base_clusters = {}
-
-    for i in range(nr_clusters):
-        output[i] = []
-        base_clusters[i] = np.array(clusters[0][i])
-
-    for rb in clusters:
-        cl = []
-        for nr, cluster in rb.items():
-            cl.append(cluster)
-        for nr, cluster in rb.items():
-            l = 0
-            for c in cl:
-                int = len(np.intersect1d(base_clusters[nr],np.array(c)))
-                if int > l:
-                    l = int
-                else:
-                    pass
-            output[nr].append(l)
-    return output

@@ -1,3 +1,5 @@
+#---PACKAGES---#
+
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
@@ -15,6 +17,11 @@ from pypfopt import expected_returns
 from scipy.optimize import minimize
 from dateutil.relativedelta import relativedelta
 
+#---FUNCTIONS---#
+
+#ELBOW METHOD
+#Use: Find optimal number of clusters based for and input matrix on the basis of the elbow method.
+
 def sse(matrix, maxClusters = 10, graph = True):
     sse = []
     for k in range(1, maxClusters + 1):
@@ -31,6 +38,9 @@ def sse(matrix, maxClusters = 10, graph = True):
         kn.plot_knee()
 
     return kn.knee
+
+#SILHOUETTE SCORE METHOD
+#Use: Find optimal number of clusters based for and input matrix on the basis of the silhouette score method.
 
 def sil_score(matrix, maxClusters = 10, graph = True):
     # A list holds the silhouette coefficients for each k
@@ -53,6 +63,9 @@ def sil_score(matrix, maxClusters = 10, graph = True):
 
     return nr_clusters
 
+#DAVIEs-BOULDIN METHOD
+#Use: Find optimal number of clusters based for and input matrix on the basis of the davies-bouldin method.
+
 def db_score(matrix, maxClusters = 10, graph = True):
     DB_score = []
 
@@ -71,6 +84,9 @@ def db_score(matrix, maxClusters = 10, graph = True):
         plt.ylabel("Davies Bouldin Score")
 
     return clusters
+
+#KMEANS
+#Use: Takes in an input matrix and outputs a map of cluster assignments.
 
 def clusterKMeansBase(matrix, nrClusters=10, n_init=10):
     
@@ -103,6 +119,9 @@ def clusterKMeansBase(matrix, nrClusters=10, n_init=10):
     
     return matrix1, clstrs, silh_coef_optimal
 
+#OMEGA SCORE
+#Use: Calculates the omega score based on and returns input and a given threshold
+
 def omega(returns, threshold):
     # Get excess return
     returns_exc = returns - threshold
@@ -112,6 +131,9 @@ def omega(returns, threshold):
     dfNegativeSum = sum(returns_exc[returns_exc < 0])
     omega = dfPositiveSum/(-dfNegativeSum)
     return omega
+
+#OMEGA PORTFOLIO OPTIMIZER
+#Use: Returns the optimal weights for a given dataset based on the omega score and a set threshold
 
 def optPortOmega(df, threshold, iterations = 25000, constraint = "Long-Only"):
 
@@ -140,6 +162,9 @@ def optPortOmega(df, threshold, iterations = 25000, constraint = "Long-Only"):
             omega_score = omega_score_
     
     return weights 
+
+#PORTFOLIO MVO
+#Use: Return the optimal weights for a given dataframe based on the mean-variance optimization
 
 def optPortMVO(returns, cov = pd.DataFrame(), nrIter = 100000, res = 4, rf = 0, cov_in = False, constraint = "Long-Only"):
 
@@ -185,6 +210,9 @@ def optPortMVO(returns, cov = pd.DataFrame(), nrIter = 100000, res = 4, rf = 0, 
     highest_sharpe_weights = simulated_weights[highest_sharpe_position]
 
     return highest_sharpe_weights
+
+#PORTFOLIO NCO
+#Use: Return the optimal weights for a given dataframe based on the Nested Clustering Optimization frame work 
 
 def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_init = 10, score = "omega", constraint = "Long-Only", ret_clust = False):
 
@@ -241,6 +269,10 @@ def optPort_nco(df, cov, numClusters = 10, threshold = 0.5, nrIter = 3000, n_ini
 
     else:
         return nco
+
+#Functions to build the risk parity portfolio
+#Use: Return the optimal weights for a given dataframe based on the risk-parity optimization
+#Based on public RPP repository: https://gist.github.com/FJR2/f91e9660044a482ffefdcf4ce9cc98f5#file-risk_parity_strategy-py
 
 TOLERANCE = 1e-11
 
@@ -347,6 +379,9 @@ def optPortRPP(returns):
     # It returns the optimised weights
     return weights
 
+#P-Parameter Tuner
+#Use: Takes in a dataframe and returns the optimal parameter
+
 def p_tuner(train_set, val_set, corr, th = 0.074, iter = 1000):
 
     min_ports = []
@@ -370,6 +405,9 @@ def p_tuner(train_set, val_set, corr, th = 0.074, iter = 1000):
     pv = ps[sharpes.index(max(sharpes))]
 
     return pv
+
+#Portfolio NCO Rebalanced
+#Use: Takes in a dataframe and returns the returns of a opimal NCO-based portfolio with mothly rebalancing
 
 def optPort_nco_RB(df, investment_start:dt, nrIter = 5000, numClusters = 3, train_period = "1y", intervals = "monthly", ret_clust = False, th = 0.074, tuneIter = 1000):
 
